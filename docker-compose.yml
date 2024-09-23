@@ -1,6 +1,7 @@
 services:
   wget:
     build: .
+    container_name: download
     ports:
       - "3000:3000"
     volumes:
