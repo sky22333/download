@@ -5,4 +5,4 @@ services:
       - "3000:3000"
     volumes:
       - ./downloads:/usr/src/app/downloads     # 映射存储文件夹
-    restart=always
+    restart: always
