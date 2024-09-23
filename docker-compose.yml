@@ -1,0 +1,7 @@
+services:
+  wget:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./downloads:/usr/src/app/downloads

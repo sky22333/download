@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件下载器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 50px;
+        }
+
+        .progress-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+        }
+
+        .progress-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(#4caf50 0%, #f3f3f3 0%);
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .file-list {
+            margin-top: 20px;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .file-item button {
+            margin-left: 10px;
+        }
+
+        .disabled {
+            background-color: #d3d3d3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 class="text-center">文件下载器</h1>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="downloadLink" placeholder="请输入文件下载链接">
+                </div>
+                <button id="downloadButton" class="btn btn-primary mb-3" onclick="startDownload()">开始下载</button>
+
+                <div class="progress-container" style="display: none;" id="progressContainer">
+                    <div id="progressCircle" class="progress-circle"></div>
+                    <div id="progressText" class="progress-text">0%</div>
+                </div>
+
+                <div class="file-list" id="fileList">
+                    <!-- 文件列表在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function startDownload() {
+            const downloadButton = document.getElementById('downloadButton');
+            const link = document.getElementById('downloadLink').value;
+
+            if (!link) {
+                alert('请输入文件下载链接');
+                return;
+            }
+
+            downloadButton.classList.add('disabled');  // 禁用按钮
+            downloadButton.disabled = true;  // 确保按钮不能被点击
+
+            const progressContainer = document.getElementById('progressContainer');
+            const progressCircle = document.getElementById('progressCircle');
+            const progressText = document.getElementById('progressText');
+            progressContainer.style.display = 'block';
+            progressCircle.style.background = 'conic-gradient(#4caf50 0%, #f3f3f3 0%)';
+            progressText.textContent = '0%';
+
+            fetch('/download', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ url: link })
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('下载失败');
+                }
+                return response.json();
+            }).then(data => {
+                const fileUrl = data.filePath;
+                trackDownloadProgress(fileUrl);  // 跟踪下载进度
+            }).catch(error => {
+                alert('下载失败，请检查链接');
+                resetDownloadButton();  // 下载失败时重置按钮状态
+            });
+        }
+
+        function trackDownloadProgress(fileUrl) {
+            fetch(fileUrl)
+                .then(response => {
+                    const contentLength = response.headers.get('Content-Length');
+                    if (!contentLength) {
+                        throw new Error('无法获取文件大小');
+                    }
+                    const totalBytes = parseInt(contentLength, 10);
+                    let loadedBytes = 0;
+
+                    const reader = response.body.getReader();
+                    const progressCircle = document.getElementById('progressCircle');
+                    const progressText = document.getElementById('progressText');
+
+                    function read() {
+                        return reader.read().then(({ done, value }) => {
+                            if (done) {
+                                progressText.textContent = '100%';
+                                progressCircle.style.background = 'conic-gradient(#4caf50 100%, #f3f3f3 0%)';
+                                resetDownloadButton();  // 下载完成时重置按钮状态
+                                loadFileList();  // 刷新文件列表
+                                return;
+                            }
+
+                            loadedBytes += value.length;
+                            const percentComplete = (loadedBytes / totalBytes) * 100;
+                            progressCircle.style.background = `conic-gradient(#4caf50 ${percentComplete}%, #f3f3f3 0%)`;
+                            progressText.textContent = Math.floor(percentComplete) + '%';
+
+                            return read();  // 继续读取
+                        });
+                    }
+
+                    return read();
+                }).catch(error => {
+                    alert('下载时发生错误');
+                    resetDownloadButton();  // 下载失败时重置按钮状态
+                });
+        }
+
+        function resetDownloadButton() {
+            const downloadButton = document.getElementById('downloadButton');
+            downloadButton.classList.remove('disabled');
+            downloadButton.disabled = false;
+        }
+
+        function loadFileList() {
+            fetch('/files')
+                .then(response => response.json())
+                .then(data => {
+                    const fileListElement = document.getElementById('fileList');
+                    fileListElement.innerHTML = '';
+                    data.files.forEach(file => {
+                        const fileItem = document.createElement('div');
+                        fileItem.classList.add('file-item');
+                        fileItem.innerHTML = `
+                            <span>${file}</span>
+                            <div>
+                                <button class="btn btn-sm btn-success" onclick="downloadFile('${file}')">下载</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteFile('${file}')">删除</button>
+                            </div>
+                        `;
+                        fileListElement.appendChild(fileItem);
+                    });
+                });
+        }
+
+        function downloadFile(fileName) {
+            window.location.href = `/downloads/${fileName}`;
+        }
+
+        function deleteFile(fileName) {
+            fetch(`/delete/${fileName}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('文件已删除');
+                        loadFileList();  // 文件删除后刷新文件列表
+                    } else {
+                        alert('删除失败');
+                    }
+                });
+        }
+
+        // 页面加载时自动加载文件列表
+        window.onload = loadFileList;
+    </script>
+
+</body>
+</html>
