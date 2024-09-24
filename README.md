@@ -5,3 +5,9 @@
 git clone https://github.com/sky22333/download.git
 ```
 
+```
+cd download
+```
+```
+docker compose up -d
+```
