@@ -173,16 +173,38 @@ func deleteFileHandler(w http.ResponseWriter, r *http.Request) {
     })
 }
 
+func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
+    addCORSHeaders(w)
+
+    // 获取请求的文件名
+    fileName := filepath.Base(r.URL.Path)
+    filePath := filepath.Join(downloadDir, fileName)
+
+    // 检查文件是否存在
+    if _, err := os.Stat(filePath); os.IsNotExist(err) {
+        http.Error(w, "文件不存在", http.StatusNotFound)
+        return
+    }
+
+    // 设置响应头，以便浏览器处理文件下载
+    w.Header().Set("Content-Disposition", "attachment; filename="+fileName)
+    w.Header().Set("Content-Type", "application/octet-stream")
+
+    // 读取文件并写入响应
+    http.ServeFile(w, r, filePath)
+}
+
 func main() {
     if err := os.MkdirAll(downloadDir, 0755); err != nil {
         log.Fatalf("创建下载目录失败: %v", err)
     }
 
     http.Handle("/", http.FileServer(http.Dir("./static")))
-    http.HandleFunc("/download", downloadHandler)
-    http.HandleFunc("/progress", progressHandler)
-    http.HandleFunc("/files", filesHandler)
-    http.HandleFunc("/delete/", deleteFileHandler)
+    http.HandleFunc("/download", downloadHandler)          // 处理下载请求
+    http.HandleFunc("/progress", progressHandler)          // 处理下载进度请求
+    http.HandleFunc("/files", filesHandler)                // 处理文件列表请求
+    http.HandleFunc("/delete/", deleteFileHandler)         // 处理文件删除请求
+    http.HandleFunc("/download/", downloadFileHandler)      // 处理文件下载请求
 
     log.Println("服务器已启动，端口 8080")
     log.Fatal(http.ListenAndServe(":8080", nil))
