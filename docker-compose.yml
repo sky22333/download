@@ -2,7 +2,6 @@ services:
   download:
     build: .
     container_name: download
-    image: download
     ports:
       - "8080:8080"
     volumes:
