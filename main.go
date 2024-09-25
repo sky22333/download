@@ -83,6 +83,8 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 
 func downloadFile(url string, index int) {
     client := grab.NewClient()
+    // 设置自定义用户代理 https://github.com/cavaliergopher/grab/issues/104
+    client.UserAgent = "non-default-user-agent"
     req, err := grab.NewRequest(downloadDir, url)
     if err != nil {
         log.Printf("Error creating request for URL %s: %v", url, err)
