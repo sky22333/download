@@ -11,3 +11,10 @@ cd download
 ```
 docker compose up -d
 ```
+
+
+### 预览
+
+<img src="/docs/pc1.png" alt="PC截图" width="600">
+<img src="/docs/pc2.png" alt="pc截图" width="600">
+<img src="/docs/333.png" alt="手机截图" width="300">
