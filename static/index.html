@@ -159,7 +159,7 @@
     function pullImages() {
         const imageNames = document.getElementById('imageInput').value.trim();
         if (!imageNames) {
-            alert('请输入至少一个Docker镜像名称');
+            alert('请输入Docker镜像名称');
             return;
         }
 
@@ -356,7 +356,7 @@
                         fileList.appendChild(fileItem);
                     });
                 } else if (fileList) {
-                    fileList.innerHTML = '<p>当前没有可用的文件。</p>';
+                    fileList.innerHTML = '<p>当前没有已下载的文件。</p>';
                 }
             })
             .catch(error => {
