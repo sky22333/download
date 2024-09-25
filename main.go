@@ -31,14 +31,21 @@ var (
     mutex       sync.Mutex
 )
 
-func addCORSHeaders(w http.ResponseWriter) {
-    w.Header().Set("Access-Control-Allow-Origin", "*")
+func addCORSHeaders(w http.ResponseWriter, r *http.Request) {
+    origin := r.Header.Get("Origin")
+    if origin != "" {
+        w.Header().Set("Access-Control-Allow-Origin", origin)
+    }
     w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
     w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+    
+    if r.Method == http.MethodOptions {
+        return
+    }
 }
 
 func downloadHandler(w http.ResponseWriter, r *http.Request) {
-    addCORSHeaders(w)
+    addCORSHeaders(w, r)
 
     if r.Method != http.MethodPost {
         http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -64,6 +71,8 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
     go func() {
         wg.Wait()
         log.Println("All downloads completed")
+        time.Sleep(2 * time.Second) // 延迟2秒后清除进度数据
+        clearProgressData()          // 清除进度数据
     }()
 
     w.Header().Set("Content-Type", "application/json")
@@ -77,7 +86,7 @@ func downloadFile(url string, index int) {
     req, err := grab.NewRequest(downloadDir, url)
     if err != nil {
         log.Printf("Error creating request for URL %s: %v", url, err)
-        updateProgress(index, 0)
+        updateProgress(index, 0) // 更新为0%进度
         return
     }
 
@@ -111,8 +120,14 @@ func updateProgress(index int, progress float64) {
     progressMap.Store(index, progress)
 }
 
+func clearProgressData() {
+    mutex.Lock()
+    defer mutex.Unlock()
+    progressMap = sync.Map{} // 清除进度数据
+}
+
 func progressHandler(w http.ResponseWriter, r *http.Request) {
-    addCORSHeaders(w)
+    addCORSHeaders(w, r)
 
     var progressList []DownloadProgress
     progressMap.Range(func(key, value interface{}) bool {
@@ -128,7 +143,7 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func filesHandler(w http.ResponseWriter, r *http.Request) {
-    addCORSHeaders(w)
+    addCORSHeaders(w, r)
 
     files, err := os.ReadDir(downloadDir)
     if err != nil {
@@ -151,7 +166,7 @@ func filesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteFileHandler(w http.ResponseWriter, r *http.Request) {
-    addCORSHeaders(w)
+    addCORSHeaders(w, r)
 
     if r.Method != http.MethodDelete {
         http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -174,23 +189,18 @@ func deleteFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
-    addCORSHeaders(w)
+    addCORSHeaders(w, r)
 
-    // 获取请求的文件名
     fileName := filepath.Base(r.URL.Path)
     filePath := filepath.Join(downloadDir, fileName)
 
-    // 检查文件是否存在
     if _, err := os.Stat(filePath); os.IsNotExist(err) {
         http.Error(w, "文件不存在", http.StatusNotFound)
         return
     }
 
-    // 设置响应头，以便浏览器处理文件下载
     w.Header().Set("Content-Disposition", "attachment; filename="+fileName)
     w.Header().Set("Content-Type", "application/octet-stream")
-
-    // 读取文件并写入响应
     http.ServeFile(w, r, filePath)
 }
 
@@ -200,11 +210,11 @@ func main() {
     }
 
     http.Handle("/", http.FileServer(http.Dir("./static")))
-    http.HandleFunc("/download", downloadHandler)          // 处理下载请求
-    http.HandleFunc("/progress", progressHandler)          // 处理下载进度请求
-    http.HandleFunc("/files", filesHandler)                // 处理文件列表请求
-    http.HandleFunc("/delete/", deleteFileHandler)         // 处理文件删除请求
-    http.HandleFunc("/download/", downloadFileHandler)      // 处理文件下载请求
+    http.HandleFunc("/download", downloadHandler)
+    http.HandleFunc("/progress", progressHandler)
+    http.HandleFunc("/files", filesHandler)
+    http.HandleFunc("/delete/", deleteFileHandler)
+    http.HandleFunc("/download/", downloadFileHandler)
 
     log.Println("服务器已启动，端口 8080")
     log.Fatal(http.ListenAndServe(":8080", nil))
