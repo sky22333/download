@@ -72,7 +72,6 @@
             margin-left: 10px;
         }
 
-        /* 优化弹窗样式 */
         .modal-dialog {
             max-width: 400px; /* 限制弹窗最大宽度 */
             margin: auto; /* 中间对齐 */
@@ -80,7 +79,6 @@
             border-radius: 8px;
         }
 
-        /* 手机端自适应布局 */
         @media (max-width: 576px) {
             body {
                 padding: 20px;
@@ -147,11 +145,22 @@
     let fileToDelete = ''; // 保存要删除的文件名
     let currentProgressData = []; // 存储当前下载进度
 
-    function showAlert(message) {
+    function showAlert(message, confirmCallback = null) {
         const messageElement = document.getElementById('commonModalMessage');
         if (messageElement) {
-            messageElement.innerText = message;
+            messageElement.innerHTML = message;
         }
+        
+        const modalFooter = document.getElementById('commonModalFooter');
+        if (confirmCallback) {
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" onclick="${confirmCallback}">删除</button>
+            `;
+        } else {
+            modalFooter.innerHTML = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>`;
+        }
+
         const modal = new bootstrap.Modal(document.getElementById('commonModal'));
         modal.show();
     }
@@ -196,9 +205,8 @@
             }
             return response.json();
         }).then(() => {
-            // 初始化进度数据
             currentProgressData = links.map((_, index) => ({ index, progress: 0 }));
-            pollProgress(links.length); // 传入下载任务的数量
+            pollProgress(links.length);
         }).catch(error => {
             showAlert('下载失败，请检查链接: ' + error.message);
             resetDownloadButton();
@@ -211,11 +219,11 @@
             .then(data => {
                 data.sort((a, b) => a.index - b.index);
                 data.forEach((progress) => {
-                    if (progress.progress < 100) { // 仅更新未完成的进度条
+                    if (progress.progress < 100) {
                         const progressBar = document.getElementById(`progressBar${progress.index}`);
                         if (progressBar) {
-                            currentProgressData[progress.index].progress = progress.progress; // 更新当前进度数据
-                            progressBar.style.width = `${progress.progress}%`; // 使用进度值更新宽度
+                            currentProgressData[progress.index].progress = progress.progress;
+                            progressBar.style.width = `${progress.progress}%`;
                             progressBar.textContent = `下载中 (${progress.progress.toFixed(2)}%)`;
                         }
                     }
@@ -223,16 +231,16 @@
 
                 const allCompleted = data.every(progress => progress.progress >= 100);
                 if (!allCompleted) {
-                    setTimeout(() => pollProgress(totalDownloads), 500); // 每 500 毫秒轮询一次
+                    setTimeout(() => pollProgress(totalDownloads), 500);
                 } else {
                     setTimeout(() => {
-                        location.reload(); // 无感知刷新页面以显示文件列表
-                    }, 500); // 0.5秒后刷新页面
+                        location.reload();
+                    }, 500);
                 }
             })
             .catch(error => {
                 console.error('发生错误:', error);
-                setTimeout(() => pollProgress(totalDownloads), 2000); // 发生错误时，延迟 2 秒后再尝试
+                setTimeout(() => pollProgress(totalDownloads), 2000);
             });
     }
 
@@ -289,19 +297,7 @@
     }
 
     function deleteFile(fileName) {
-        document.getElementById('commonModalLabel').innerText = '确认删除';
-        document.getElementById('commonModalMessage').innerHTML = `你确定要删除文件 <strong>${fileName}</strong> 吗？`;
-        
-        const modalFooter = document.getElementById('commonModalFooter');
-        if (modalFooter) {
-            modalFooter.innerHTML = `
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-danger" onclick="confirmDelete('${fileName}')">删除</button>
-            `;
-        }
-
-        const modal = new bootstrap.Modal(document.getElementById('commonModal'));
-        modal.show();
+        showAlert(`你确定要删除文件 <strong>${fileName}</strong> 吗？`, `confirmDelete('${fileName}')`);
     }
     
     function confirmDelete(fileName) {
