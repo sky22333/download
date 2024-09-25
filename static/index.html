@@ -145,9 +145,13 @@
 
 <script>
     let fileToDelete = ''; // 保存要删除的文件名
+    let currentProgressData = []; // 存储当前下载进度
 
     function showAlert(message) {
-        document.getElementById('commonModalMessage').innerText = message;
+        const messageElement = document.getElementById('commonModalMessage');
+        if (messageElement) {
+            messageElement.innerText = message;
+        }
         const modal = new bootstrap.Modal(document.getElementById('commonModal'));
         modal.show();
     }
@@ -165,7 +169,9 @@
         downloadButton.disabled = true;
 
         const progressContainers = document.getElementById('progressContainers');
-        progressContainers.innerHTML = '';
+        if (progressContainers) {
+            progressContainers.innerHTML = '';
+        }
 
         links.forEach((_, index) => {
             const progressContainer = document.createElement('div');
@@ -190,6 +196,8 @@
             }
             return response.json();
         }).then(() => {
+            // 初始化进度数据
+            currentProgressData = links.map((_, index) => ({ index, progress: 0 }));
             pollProgress(links.length); // 传入下载任务的数量
         }).catch(error => {
             showAlert('下载失败，请检查链接: ' + error.message);
@@ -201,13 +209,15 @@
         fetch('/progress')
             .then(response => response.json())
             .then(data => {
-                data.forEach((progress, index) => {
-                    const progressBar = document.getElementById(`progressBar${index}`);
-                    if (progressBar) {
-                        progressBar.style.width = `${progress.progress}%`; // 使用进度值更新宽度
-                        progressBar.textContent = progress.progress < 100 
-                            ? `下载中 (${progress.progress.toFixed(2)}%)` 
-                            : `下载完成`;
+                data.sort((a, b) => a.index - b.index);
+                data.forEach((progress) => {
+                    if (progress.progress < 100) { // 仅更新未完成的进度条
+                        const progressBar = document.getElementById(`progressBar${progress.index}`);
+                        if (progressBar) {
+                            currentProgressData[progress.index].progress = progress.progress; // 更新当前进度数据
+                            progressBar.style.width = `${progress.progress}%`; // 使用进度值更新宽度
+                            progressBar.textContent = `下载中 (${progress.progress.toFixed(2)}%)`;
+                        }
                     }
                 });
 
@@ -228,8 +238,10 @@
 
     function resetDownloadButton() {
         const downloadButton = document.getElementById('downloadButton');
-        downloadButton.classList.remove('disabled');
-        downloadButton.disabled = false;
+        if (downloadButton) {
+            downloadButton.classList.remove('disabled');
+            downloadButton.disabled = false;
+        }
     }
 
     function loadFileList() {
@@ -242,7 +254,9 @@
             })
             .then(data => {
                 const fileList = document.getElementById('fileList');
-                fileList.innerHTML = '';
+                if (fileList) {
+                    fileList.innerHTML = '';
+                }
                 
                 if (data.files && data.files.length > 0) {
                     data.files.forEach(file => {
@@ -261,47 +275,53 @@
                         `;
                         fileList.appendChild(fileItem);
                     });
-                } else {
+                } else if (fileList) {
                     fileList.innerHTML = '<p>当前没有可用的文件。</p>';
                 }
             })
             .catch(error => {
                 console.error('错误:', error);
                 const fileList = document.getElementById('fileList');
-                fileList.innerHTML = `<p>加载文件列表时出错: ${error.message}</p>`;
+                if (fileList) {
+                    fileList.innerHTML = `<p>加载文件列表时出错: ${error.message}</p>`;
+                }
             });
     }
 
-	function deleteFile(fileName) {
-	    document.getElementById('commonModalLabel').innerText = '确认删除';
-	    document.getElementById('commonModalMessage').innerHTML = `你确定要删除文件 <strong>${fileName}</strong> 吗？`;
-	    
-	    const modalFooter = document.getElementById('commonModalFooter');
-	    modalFooter.innerHTML = `
-	        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-	        <button type="button" class="btn btn-danger" onclick="confirmDelete('${fileName}')">删除</button>
-	    `;
-	
-	    const modal = new bootstrap.Modal(document.getElementById('commonModal'));
-	    modal.show();
-	}
-	
-	function confirmDelete(fileName) {
-	    fetch(`/delete/${fileName}`, {
-	        method: 'DELETE'
-	    }).then(response => {
-	        if (!response.ok) {
-	            showAlert('删除失败，请稍后再试');
-	            return;
-	        }
-	        loadFileList();
-	        const modal = bootstrap.Modal.getInstance(document.getElementById('commonModal'));
-	        modal.hide();
-	    }).catch(error => {
-	        console.error('删除错误:', error);
-	        showAlert('删除失败，请稍后再试。');
-	    });
-	}
+    function deleteFile(fileName) {
+        document.getElementById('commonModalLabel').innerText = '确认删除';
+        document.getElementById('commonModalMessage').innerHTML = `你确定要删除文件 <strong>${fileName}</strong> 吗？`;
+        
+        const modalFooter = document.getElementById('commonModalFooter');
+        if (modalFooter) {
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete('${fileName}')">删除</button>
+            `;
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('commonModal'));
+        modal.show();
+    }
+    
+    function confirmDelete(fileName) {
+        fetch(`/delete/${fileName}`, {
+            method: 'DELETE'
+        }).then(response => {
+            if (!response.ok) {
+                showAlert('删除失败，请稍后再试');
+                return;
+            }
+            loadFileList();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('commonModal'));
+            if (modal) {
+                modal.hide();
+            }
+        }).catch(error => {
+            console.error('删除错误:', error);
+            showAlert('删除失败，请稍后再试。');
+        });
+    }
 
     window.onload = loadFileList;
 </script>
