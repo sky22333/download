@@ -6,4 +6,5 @@ services:
       - "8080:8080"
     volumes:
       - ./downloads:/app/downloads   # 映射文件目录
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: always
