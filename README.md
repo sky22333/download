@@ -23,7 +23,7 @@
 
 ---
 
-### docker部署
+### Docker部署
 
 ```
 git clone https://github.com/sky22333/download.git
