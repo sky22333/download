@@ -67,7 +67,7 @@ sudo systemctl daemon-reload
 
 
 
-### 注意事项
+### 说明
 
 - 用户从前端输入链接
 
