@@ -17,14 +17,13 @@
 ### Docker部署
 
 ```
-git clone https://github.com/sky22333/download.git
-```
-
-```
-cd download
-```
-```
-docker compose up -d
+docker run -d \
+  --name download \
+  -p 8080:8080 \
+  -v ./downloads:/root/downloads \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --restart always \
+  ghcr.io/sky22333/download:latest
 ```
 > 默认运行在8080端口，可自行域名反代并开启HTTPS
 
