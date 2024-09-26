@@ -119,9 +119,9 @@ func pullPackAndCleanImages(images []string) {
         compressionStatus.Store(image, true)
     }
 
-	// 清除进度，延迟1秒后
+	// 清除进度，延迟2秒后
 	go func() {
-	    time.Sleep(1 * time.Second)
+	    time.Sleep(2 * time.Second)
 	    for _, image := range images {
 	        log.Printf("清除镜像 %s 的下载进度", image)
 	        progressMap.Delete(image)
@@ -241,7 +241,7 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	    for i := range req.Urls {
 	        updateProgress(i, 100)
 	    }
-	    time.Sleep(1 * time.Second) // 延迟1秒后清除进度数据
+	    time.Sleep(2 * time.Second) // 延迟2秒后清除进度数据
 	    clearProgressData()         // 清除进度数据
 	}()
 
