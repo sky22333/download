@@ -39,7 +39,7 @@ curl -fsSL https://get.docker.com | sh
 ```
 2：部署本项目
 ```
-bash <(wget -qO- https://github.com/sky22333/download/raw/shell/install.sh)
+bash <(wget -qO- https://github.com/sky22333/download/raw/main/install.sh)
 ```
 3：查看运行状态
 ```
