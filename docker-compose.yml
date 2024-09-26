@@ -5,6 +5,6 @@ services:
     ports:
       - "8080:8080"               # 映射端口
     volumes:
-      - ./downloads:/app/downloads   # 映射文件目录
+      - ./downloads:/root/downloads   # 映射文件目录
       - /var/run/docker.sock:/var/run/docker.sock    # 这里不能更改
     restart: always
