@@ -241,7 +241,7 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	    for i := range req.Urls {
 	        updateProgress(i, 100)
 	    }
-	    time.Sleep(2 * time.Second) // 延迟2秒后清除进度数据
+	    time.Sleep(1 * time.Second) // 延迟1秒后清除进度数据
 	    clearProgressData()         // 清除进度数据
 	}()
 
