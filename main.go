@@ -404,7 +404,7 @@ func main() {
         log.Fatalf("创建下载目录失败: %v", err)
     }
 
-    http.Handle("/", http.FileServer(http.Dir("./static")))
+    http.Handle("/", http.FileServer(http.Dir("./public")))
     http.HandleFunc("/download", downloadHandler)
     http.HandleFunc("/progress", progressHandler)
     http.HandleFunc("/files", filesHandler)

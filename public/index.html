@@ -156,14 +156,21 @@
 </footer>
 
 <script>
-    function pullImages() {
-        const imageNames = document.getElementById('imageInput').value.trim();
-        if (!imageNames) {
-            alert('请输入Docker镜像名称');
-            return;
-        }
-
-        const images = imageNames.split('\n').map(name => name.trim()).filter(Boolean);
+	function pullImages() {
+	    const imageNames = document.getElementById('imageInput').value.trim();
+	    if (!imageNames) {
+	        showModal('错误', '请输入Docker镜像名称');
+	        return;
+	    }
+	
+	    const images = imageNames.split('\n').map(name => name.trim()).filter(Boolean);
+	    
+	    // 格式验证
+	    const invalidImages = images.filter(image => !image.match(/^[a-z0-9]+(?:[._-][a-z0-9]+)*\/[a-z0-9]+(?:[._-][a-z0-9]+)*:[a-z0-9]+(?:[._-][a-z0-9]+)*$/));
+	    if (invalidImages.length > 0) {
+	        showModal('格式错误', `输入的镜像名称格式不正确!   格式为《用户名/镜像名:标签》，官方镜像请用library字段替代用户名，正确格式示例: linuxserver/mysql:latest`);
+	        return;
+	    }
 
         const pullImageButton = document.getElementById('pullImageButton');
         pullImageButton.classList.add('disabled');
@@ -214,9 +221,15 @@
         const links = document.getElementById('downloadLinks').value.trim().split('\n').filter(Boolean);
 
         if (!links.length) {
-            alert('请输入至少一个文件下载链接');
+            showModal('请输入至少一个文件下载链接', `输入的链接格式不正确！\n\n\n链接必须以http://或https://开头。`);
             return;
         }
+
+        const invalidLinks = links.filter(link => !link.match(/^https?:\/\/.+/));
+    if (invalidLinks.length > 0) {
+        showModal('格式错误', `输入的链接格式不正确！\n\n\n链接必须以http://或https://开头。`);
+        return;
+    }
 
         downloadButton.classList.add('disabled');
         downloadButton.disabled = true;
@@ -384,7 +397,13 @@
             });
         }
     }
-
+    
+function showModal(title, message) {
+        const modal = new bootstrap.Modal(document.getElementById('commonModal'));
+	   document.getElementById('commonModalLabel').textContent = title;
+	   document.getElementById('commonModalMessage').textContent = message;
+	   modal.show();
+    }
     window.onload = loadFileList;
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
