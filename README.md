@@ -54,6 +54,14 @@ bash <(wget -qO- https://github.com/sky22333/download/raw/shell/install.sh)
 sudo systemctl status download.service
 ```
 
+停止并卸载
+```
+sudo systemctl stop download.service
+sudo systemctl disable download.service
+sudo rm /etc/systemd/system/download.service
+sudo systemctl daemon-reload
+```
+
 ---
 
 ### 预览
