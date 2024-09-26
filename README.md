@@ -9,22 +9,8 @@
 **功能特点：**
 * **简单易用：** 用户界面简洁直观，操作方便。
 * **高效下载：** 支持多线程下载，加速文件传输。
-* **环境支持：** 支持`docker`和所有`linux-amd64`系统
+* **部署简单：** 支持`docker`部署和一键脚本部署，适配大部分`linux-amd64`系统。
 * **镜像下载：** 支持下载`docker镜像`并自动打包为压缩包，需要服务器已经安装`docker`
-
-**1**：用户从前端输入链接
-
-**2**：后端调用`cavaliergopher/grab/v3`模块
-
-**3**：下载文件到服务器`downloads`文件夹
-
-**4**：服务器`downloads`文件内容渲染到前端
-
-**5**：用户从服务器`downloads`文件内下载指定文件到本地
-
-**6**：`docker`镜像下载默认从`docker hub`拉取，必须符合格式`用户名/镜像名:标签`，对于官方仓库请用`library`字段替代用户名，拉取完成后自动打包为压缩包，并自动清除镜像，对于压缩包和文件你可以直接在前端界面下载和删除。
-
-**7**：下载过程可以查看日志，纯新手小白练手项目，更复杂的我也不会了，发现BUG的话请大佬们帮忙修修，问就是我也不懂，最后请大家点点星星支持一下。
 
 ---
 
@@ -40,21 +26,29 @@ cd download
 ```
 docker compose up -d
 ```
-**项目默认运行在`8080`端口**
+> 默认运行在8080端口，可自行域名反代并开启HTTPS
 
 ---
 
 
 ### 一键安装脚本
+
+- 1：安装docker
+```
+curl -fsSL https://get.docker.com | sh
+```
+- 2：部署本项目
 ```
 bash <(wget -qO- https://github.com/sky22333/download/raw/shell/install.sh)
 ```
-查看运行状态
+- 3：查看运行状态
 ```
 sudo systemctl status download.service
 ```
+> 默认运行在8080端口，可自行域名反代并开启HTTPS
 
-停止并卸载
+
+- 4：停止并卸载（可选）
 ```
 sudo systemctl stop download.service
 sudo systemctl disable download.service
@@ -70,6 +64,25 @@ sudo systemctl daemon-reload
 
 ---
 <img src="https://github.com/user-attachments/assets/3ce12bef-95e0-48b3-8c81-2ea80049f264" alt="手机截图" width="300">
+
+
+
+### 注意事项
+
+- 用户从前端输入链接
+
+- 后端调用下载模块和docker模块
+
+- 下载文件或镜像到服务器`downloads`文件夹
+
+- 文件夹`downloads`内的文件和镜像压缩包显示到前端
+
+- 用户可以从服务器`downloads`文件内下载指定文件或者镜像压缩包到本地
+
+- `docker`镜像下载默认从`docker hub`拉取，必须符合格式`用户名/镜像名:标签`，对于官方仓库请用`library`字段替代用户名，拉取完成后自动打包为压缩包，并自动清除镜像，对于压缩包和文件你可以直接在前端界面下载和删除。
+
+- 后端有更详细的日志，菜鸡纯小白练手的项目，发现BUG的话请大佬们帮忙修修，问就是我也不懂，最后请大家点点星星支持一下。
+
 
 
 
