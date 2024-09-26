@@ -42,6 +42,17 @@ docker compose up -d
 ```
 **项目默认运行在`8080`端口**
 
+
+
+### 一键安装脚本
+```
+bash <(wget -qO- https://github.com/sky22333/download/raw/shell/install.sh)
+```
+查看运行状态
+```
+sudo systemctl status download.service
+```
+
 ---
 
 ### 预览
