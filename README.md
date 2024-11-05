@@ -31,30 +31,7 @@ docker run -d \
 ---
 
 
-### 一键安装脚本
 
-1：安装docker
-```
-curl -fsSL https://get.docker.com | sh
-```
-2：部署本项目
-```
-bash <(wget -qO- https://github.com/sky22333/download/raw/main/install.sh)
-```
-3：查看运行状态
-```
-sudo systemctl status download.service
-```
-> 默认运行在8080端口，可自行域名反代并开启HTTPS
-
-
-4：停止并卸载（可选）
-```
-sudo systemctl stop download.service
-sudo systemctl disable download.service
-sudo rm /etc/systemd/system/download.service
-sudo systemctl daemon-reload
-```
 
 ---
 
