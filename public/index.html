@@ -166,7 +166,7 @@
 	    const images = imageNames.split('\n').map(name => name.trim()).filter(Boolean);
 	    
 	    // 格式验证
-	    const invalidImages = images.filter(image => !image.match(/^[a-z0-9]+(?:[._-][a-z0-9]+)*\/[a-z0-9]+(?:[._-][a-z0-9]+)*:[a-z0-9]+(?:[._-][a-z0-9]+)*$/));
+	    const invalidImages = images.filter(image => !image.match(/^[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*\/[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*:[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*$/));
 	    if (invalidImages.length > 0) {
 	        showModal('格式错误', `输入的镜像名称格式不正确!   格式为《用户名/镜像名:标签》，官方镜像请用library字段替代用户名，正确格式示例: linuxserver/mysql:latest`);
 	        return;
