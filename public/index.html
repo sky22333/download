@@ -14,6 +14,29 @@
             background-color: #f8f9fa;
         }
 
+		.login-container {
+			display: block;
+			max-width: 350px;
+			margin: 100px auto;
+			padding: 20px;
+			border: 1px solid #ddd;
+			border-radius: 5px;
+			text-align: center;
+			background-color: white;
+		}
+
+		input[type="password"] {
+			width: 100%;
+			padding: 8px;
+			margin: 10px 0;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+		}
+
+		button:hover {
+			background-color: #0056b3;
+		}
+
         .container {
             background-color: white;
             border-radius: 10px;
@@ -101,7 +124,13 @@
     </style>
 </head>
 <body>
-
+<div id="loginContainer" class="login-container">
+    <h2>登录</h2>
+    <input type="password" id="password" placeholder="请输入密码">
+    <button onclick="login()">登录</button>
+    <div id="loginError" class="error-message"></div>
+</div>
+<div id="mainContainer" class="main-container">
 <div class="container">
     <h1 class="text-center"><i class="fas fa-download me-2"></i>下载中转站</h1>
 
@@ -156,6 +185,10 @@
 </footer>
 
 <script>
+    window.addEventListener('load', function() {
+        checkSession();
+        loadFileList();
+    });
 	function pullImages() {
 	    const imageNames = document.getElementById('imageInput').value.trim();
 	    if (!imageNames) {
@@ -338,65 +371,51 @@
     }
 
     function loadFileList() {
-        fetch('/files')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('网络响应不是OK');
-                }
-                return response.json();
-            })
-            .then(data => {
-                const fileList = document.getElementById('fileList');
-                if (fileList) {
-                    fileList.innerHTML = '';
-                }
+	    fetch('/files', {
+	        headers: { 'X-Session-Key': localStorage.getItem('sessionKey') }
+	    })
+	    .then(response => {
+	        if (!response.ok) {
+	            throw new Error('网络响应不是OK');
+	        }
+	        return response.json();
+	    })
+	    .then(data => {
+	        const fileList = document.getElementById('fileList');
+	        if (fileList) {
+	            fileList.innerHTML = '';
+	        }
+	
+	        if (data.files && data.files.length > 0) {
+	            data.files.forEach(file => {
+	                const fileItem = document.createElement('div');
+	                fileItem.classList.add('file-item');
+	                fileItem.innerHTML = `
+	                    <span><i class="fas fa-file me-2"></i>${file}</span>
+	                    <div>
+                             <button onclick="window.location.href='/download/${file}'" class="btn btn-sm btn-success">
+                               <i class="fas fa-download me-1"></i>下载
+                             </button>
+	                        <button onclick="deleteFile('${file}')" class="btn btn-sm btn-danger">
+	                            <i class="fas fa-trash-alt me-1"></i>删除
+	                        </button>
+	                    </div>
+	                `;
+	                fileList.appendChild(fileItem);
+	            });
+	        } else if (fileList) {
+	            fileList.innerHTML = '<p>当前没有已下载的文件。</p>';
+	        }
+	    })
+	    .catch(error => {
+	        console.error('加载文件列表失败:', error);
+	        const fileList = document.getElementById('fileList');
+	        if (fileList) {
+	            fileList.innerHTML = `<p>无法加载列表，请刷新页面: ${error.message}</p>`;
+	        }
+	    });
+	}
 
-                if (data.files && data.files.length > 0) {
-                    data.files.forEach(file => {
-                        const fileItem = document.createElement('div');
-                        fileItem.classList.add('file-item');
-                        fileItem.innerHTML = `
-                            <span><i class="fas fa-file me-2"></i>${file}</span>
-                            <div>
-                                <button onclick="window.location.href='/download/${file}'" class="btn btn-sm btn-success">
-                                    <i class="fas fa-download me-1"></i>下载
-                                </button>
-                                <button onclick="deleteFile('${file}')" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-trash-alt me-1"></i>删除
-                                </button>
-                            </div>
-                        `;
-                        fileList.appendChild(fileItem);
-                    });
-                } else if (fileList) {
-                    fileList.innerHTML = '<p>当前没有已下载的文件。</p>';
-                }
-            })
-            .catch(error => {
-                console.error('错误:', error);
-                const fileList = document.getElementById('fileList');
-                if (fileList) {
-                    fileList.innerHTML = `<p>加载文件列表时出错: ${error.message}</p>`;
-                }
-            });
-    }
-
-    function deleteFile(fileName) {
-        if (confirm(`你确定要删除文件 ${fileName} 吗？`)) {
-            fetch(`/delete/${fileName}`, {
-                method: 'DELETE'
-            }).then(response => {
-                if (!response.ok) {
-                    alert('删除失败，请稍后再试');
-                    return;
-                }
-                loadFileList();
-            }).catch(error => {
-                console.error('删除错误:', error);
-                alert('删除失败，请稍后再试。');
-            });
-        }
-    }
     
 function showModal(title, message) {
         const modal = new bootstrap.Modal(document.getElementById('commonModal'));
@@ -404,7 +423,90 @@ function showModal(title, message) {
 	   document.getElementById('commonModalMessage').textContent = message;
 	   modal.show();
     }
-    window.onload = loadFileList;
+</script>
+<script>
+   function checkSession() {
+       const sessionKey = localStorage.getItem('sessionKey');
+       if (!sessionKey) {
+           showLoginPage();
+           return;
+       }
+
+       fetch('/files', {
+           headers: {
+               'X-Session-Key': sessionKey
+           }
+       })
+       .then(response => {
+           if (response.ok) {
+               showMainPage();
+           } else {
+               showLoginPage();
+           }
+       })
+       .catch(() => showLoginPage());
+   }
+
+   function showLoginPage() {
+       document.getElementById('loginContainer').style.display = 'block';
+       document.getElementById('mainContainer').style.display = 'none';
+       localStorage.removeItem('sessionKey');
+   }
+
+   function showMainPage() {
+       document.getElementById('loginContainer').style.display = 'none';
+       document.getElementById('mainContainer').style.display = 'block';
+   }
+
+   function login() {
+       const password = document.getElementById('password').value;
+       
+       fetch('/login', {
+           method: 'POST',
+           headers: {
+               'Content-Type': 'application/json'
+           },
+           body: JSON.stringify({ password: password })
+       })
+       .then(response => {
+           if (!response.ok) {
+               throw new Error('Invalid password');
+           }
+           return response.json();
+       })
+       .then(data => {
+           localStorage.setItem('sessionKey', data.sessionKey);
+           showMainPage();
+           document.getElementById('loginError').textContent = '';
+       })
+       .catch(() => {
+           document.getElementById('loginError').textContent = '密码错误';
+       });
+   }
+
+   const originalFetch = window.fetch;
+   window.fetch = function() {
+       const args = Array.prototype.slice.call(arguments);
+       const sessionKey = localStorage.getItem('sessionKey');
+       
+       if (sessionKey && args[0] !== '/login') {
+           if (!args[1]) {
+               args[1] = {};
+           }
+           if (!args[1].headers) {
+               args[1].headers = {};
+           }
+           args[1].headers['X-Session-Key'] = sessionKey;
+       }
+       
+       return originalFetch.apply(window, args)
+           .then(response => {
+               if (response.status === 401) {
+                   showLoginPage();
+               }
+               return response;
+           });
+   };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>

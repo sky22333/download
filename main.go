@@ -2,6 +2,8 @@ package main
 
 import (
     "context"
+    "crypto/rand"
+    "encoding/base64"
     "encoding/json"
     "fmt"
     "io"
@@ -19,17 +21,14 @@ import (
     "github.com/docker/docker/pkg/jsonmessage"
 )
 
-// 下载请求结构体
 type DownloadRequest struct {
     Urls []string `json:"urls"`
 }
 
-// 文件列表响应结构体
 type FileListResponse struct {
     Files []string `json:"files"`
 }
 
-// 下载进度结构体
 type DownloadProgress struct {
     Index        int     `json:"index"`
     Progress     float64 `json:"progress"`
@@ -37,15 +36,24 @@ type DownloadProgress struct {
     ImageName    string  `json:"imageName"`
 }
 
-const downloadDir = "./downloads" // 下载目录
+type Session struct {
+    Key       string
+    CreatedAt time.Time
+}
+
+const (
+    downloadDir = "./downloads"
+    keyLength   = 32
+)
 
 var (
     progressMap       sync.Map
     mutex             sync.Mutex
     compressionStatus sync.Map
+    sessions         sync.Map
+    sessionDuration  = 8 * time.Hour
 )
 
-// 添加 CORS 头
 func addCORSHeaders(w http.ResponseWriter, r *http.Request) {
     origin := r.Header.Get("Origin")
     if origin != "" {
@@ -60,7 +68,94 @@ func addCORSHeaders(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-// Docker 镜像拉取处理器
+func generateSessionKey() (string, error) {
+    bytes := make([]byte, keyLength)
+    if _, err := rand.Read(bytes); err != nil {
+        return "", err
+    }
+    return base64.URLEncoding.EncodeToString(bytes), nil
+}
+
+func validateSession(key string) bool {
+    if value, ok := sessions.Load(key); ok {
+        session := value.(Session)
+        if time.Since(session.CreatedAt) < sessionDuration {
+            return true
+        }
+        sessions.Delete(key)
+    }
+    return false
+}
+
+func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        if r.Method == http.MethodOptions {
+            addCORSHeaders(w, r)
+            w.WriteHeader(http.StatusNoContent)
+            return
+        }
+
+        addCORSHeaders(w, r)
+
+        if r.URL.Path == "/login" {
+            next(w, r)
+            return
+        }
+
+        sessionKey := r.Header.Get("X-Session-Key")
+        if !validateSession(sessionKey) {
+            http.Error(w, "Unauthorized", http.StatusUnauthorized)
+            return
+        }
+
+        next(w, r)
+    }
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+    addCORSHeaders(w, r)
+
+    if r.Method != http.MethodPost {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var req struct {
+        Password string `json:"password"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    expectedPassword := os.Getenv("APP_PASSWORD")
+    if expectedPassword == "" {
+        log.Fatal("环境变量 APP_PASSWORD 未设置")
+    }
+
+    if req.Password != expectedPassword {
+        http.Error(w, "Invalid password", http.StatusUnauthorized)
+        return
+    }
+
+    sessionKey, err := generateSessionKey()
+    if err != nil {
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    sessions.Store(sessionKey, Session{
+        Key:       sessionKey,
+        CreatedAt: time.Now(),
+    })
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]string{
+        "sessionKey": sessionKey,
+    })
+}
+
 func dockerPullHandler(w http.ResponseWriter, r *http.Request) {
     addCORSHeaders(w, r)
 
@@ -87,7 +182,6 @@ func dockerPullHandler(w http.ResponseWriter, r *http.Request) {
     })
 }
 
-// 拉取、打包和清理镜像
 func pullPackAndCleanImages(images []string) {
     cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
     if err != nil {
@@ -106,7 +200,6 @@ func pullPackAndCleanImages(images []string) {
     }
     wg.Wait()
 
-    // 打包镜像
     tarFileName := fmt.Sprintf("docker_images_%s.tar", time.Now().Format("20060102150405"))
     tarFilePath := filepath.Join(downloadDir, tarFileName)
     if err := packImages(cli, images, tarFilePath); err != nil {
@@ -114,12 +207,10 @@ func pullPackAndCleanImages(images []string) {
         return
     }
 
-    // 更新压缩状态，仅在成功打包后设置为true
     for _, image := range images {
         compressionStatus.Store(image, true)
     }
 
-	// 清除进度，延迟2秒后
 	go func() {
 	    time.Sleep(2 * time.Second)
 	    for _, image := range images {
@@ -128,14 +219,12 @@ func pullPackAndCleanImages(images []string) {
 	    }
 	}()
 
-    // 清理镜像
     for _, image := range images {
         if _, err := cli.ImageRemove(context.Background(), image, types.ImageRemoveOptions{}); err != nil {
             log.Printf("删除镜像 %s 失败: %v", image, err)
         }
     }
 
-    // 更新所有镜像进度为完成
     for _, image := range images {
         updateDockerProgress(image, 100)
     }
@@ -143,7 +232,6 @@ func pullPackAndCleanImages(images []string) {
     log.Printf("镜像已拉取，打包到 %s，并清理完毕", tarFilePath)
 }
 
-// 拉取单个镜像
 func pullImage(cli *client.Client, image string) {
     if !strings.Contains(image, ":") {
         image += ":latest"
@@ -174,18 +262,15 @@ func pullImage(cli *client.Client, image string) {
     }
 }
 
-// 更新 Docker 镜像进度
 func updateDockerProgress(image string, progress float64) {
     mutex.Lock()
     defer mutex.Unlock()
     progressMap.Store(image, progress)
-    // 初始化压缩状态为false
     if _, exists := compressionStatus.Load(image); !exists {
         compressionStatus.Store(image, false)
     }
 }
 
-// 打包镜像
 func packImages(cli *client.Client, images []string, tarFilePath string) error {
     tarFile, err := os.Create(tarFilePath)
     if err != nil {
@@ -209,7 +294,6 @@ func packImages(cli *client.Client, images []string, tarFilePath string) error {
     return nil
 }
 
-// 文件下载处理器
 func downloadHandler(w http.ResponseWriter, r *http.Request) {
     addCORSHeaders(w, r)
 
@@ -237,12 +321,11 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 	    wg.Wait()
 	    log.Println("所有下载已完成")
-	    // 更新所有文件进度为完成
 	    for i := range req.Urls {
 	        updateProgress(i, 100)
 	    }
-	    time.Sleep(2 * time.Second) // 延迟2秒后清除进度数据
-	    clearProgressData()         // 清除进度数据
+	    time.Sleep(2 * time.Second)
+	    clearProgressData()
 	}()
 
     w.Header().Set("Content-Type", "application/json")
@@ -251,7 +334,6 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
     })
 }
 
-// 单个文件下载
 func downloadFile(url string, index int) {
     client := grab.NewClient()
     client.UserAgent = "non-default-user-agent"
@@ -285,22 +367,19 @@ func downloadFile(url string, index int) {
     }
 }
 
-// 更新文件下载进度
 func updateProgress(index int, progress float64) {
     mutex.Lock()
     defer mutex.Unlock()
     progressMap.Store(index, progress)
 }
 
-// 清除进度数据
 func clearProgressData() {
     mutex.Lock()
     defer mutex.Unlock()
-    progressMap = sync.Map{}    // 清除进度数据
-    compressionStatus = sync.Map{} // 清除压缩状态数据
+    progressMap = sync.Map{}
+    compressionStatus = sync.Map{}
 }
 
-// 进度处理器
 func progressHandler(w http.ResponseWriter, r *http.Request) {
     addCORSHeaders(w, r)
 
@@ -321,7 +400,7 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
         case string:
             imageName = k
             progressList = append(progressList, DownloadProgress{
-                Index:        -1, // 用于区分镜像进度
+                Index:        -1,
                 Progress:     value.(float64),
                 IsCompressed: isCompressed,
                 ImageName:    imageName,
@@ -334,7 +413,6 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
     _ = json.NewEncoder(w).Encode(progressList)
 }
 
-// 文件列表处理器
 func filesHandler(w http.ResponseWriter, r *http.Request) {
     addCORSHeaders(w, r)
 
@@ -358,7 +436,6 @@ func filesHandler(w http.ResponseWriter, r *http.Request) {
     })
 }
 
-// 文件删除处理器
 func deleteFileHandler(w http.ResponseWriter, r *http.Request) {
     addCORSHeaders(w, r)
 
@@ -382,7 +459,6 @@ func deleteFileHandler(w http.ResponseWriter, r *http.Request) {
     })
 }
 
-// 文件下载处理器
 func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
     addCORSHeaders(w, r)
 
@@ -403,15 +479,32 @@ func main() {
     if err := os.MkdirAll(downloadDir, 0755); err != nil {
         log.Fatalf("创建下载目录失败: %v", err)
     }
+    if os.Getenv("APP_PASSWORD") == "" {
+        log.Fatal("环境变量 APP_PASSWORD 未设置")
+    }
 
     http.Handle("/", http.FileServer(http.Dir("./public")))
-    http.HandleFunc("/download", downloadHandler)
-    http.HandleFunc("/progress", progressHandler)
-    http.HandleFunc("/files", filesHandler)
-    http.HandleFunc("/delete/", deleteFileHandler)
+    http.HandleFunc("/login", loginHandler)
+    http.HandleFunc("/download", authMiddleware(downloadHandler))
+    http.HandleFunc("/progress", authMiddleware(progressHandler))
+    http.HandleFunc("/files", authMiddleware(filesHandler))
+    http.HandleFunc("/delete/", authMiddleware(deleteFileHandler))
     http.HandleFunc("/download/", downloadFileHandler)
-    http.HandleFunc("/docker-pull", dockerPullHandler)
+    http.HandleFunc("/docker-pull", authMiddleware(dockerPullHandler))
 
-    log.Println("服务器已启动，端口 8080")
+    go func() {
+        for {
+            time.Sleep(time.Hour)
+            sessions.Range(func(key, value interface{}) bool {
+                session := value.(Session)
+                if time.Since(session.CreatedAt) >= sessionDuration {
+                    sessions.Delete(key)
+                }
+                return true
+            })
+        }
+    }()
+
+    log.Println("服务器已启动，面板端口 8080")
     log.Fatal(http.ListenAndServe(":8080", nil))
 }
