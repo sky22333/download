@@ -488,7 +488,7 @@ func main() {
     http.HandleFunc("/download", authMiddleware(downloadHandler))
     http.HandleFunc("/progress", authMiddleware(progressHandler))
     http.HandleFunc("/files", authMiddleware(filesHandler))
-    http.HandleFunc("/delete/", authMiddleware(deleteFileHandler))
+    http.HandleFunc("/delete/", deleteFileHandler)
     http.HandleFunc("/download/", downloadFileHandler)
     http.HandleFunc("/docker-pull", authMiddleware(dockerPullHandler))
 
