@@ -14,28 +14,28 @@
             background-color: #f8f9fa;
         }
 
-		.login-container {
-			display: block;
-			max-width: 350px;
-			margin: 100px auto;
-			padding: 20px;
-			border: 1px solid #ddd;
-			border-radius: 5px;
-			text-align: center;
-			background-color: white;
-		}
+	.login-container {
+		display: block;
+		max-width: 350px;
+		margin: 100px auto;
+		padding: 20px;
+		border: 1px solid #ddd;
+		border-radius: 5px;
+		text-align: center;
+		background-color: white;
+	}
 
-		input[type="password"] {
-			width: 100%;
-			padding: 8px;
-			margin: 10px 0;
-			border: 1px solid #ddd;
-			border-radius: 4px;
-		}
+	input[type="password"] {
+		width: 100%;
+		padding: 8px;
+		margin: 10px 0;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+	}
 
-		button:hover {
-			background-color: #0056b3;
-		}
+	button:hover {
+		background-color: #0056b3;
+	}
 
         .container {
             background-color: white;
@@ -199,7 +199,7 @@
 	    const images = imageNames.split('\n').map(name => name.trim()).filter(Boolean);
 	    
 	    // 格式验证
-	    const invalidImages = images.filter(image => !image.match(/^[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*\/[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*:[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*$/));
+	    const invalidImages = images.filter(image => !image.match(/^(ghcr.io\/)?[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*\/[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*:[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*$/));
 	    if (invalidImages.length > 0) {
 	        showModal('格式错误', `输入的镜像名称格式不正确!   格式为《用户名/镜像名:标签》，官方镜像请用library字段替代用户名，正确格式示例: linuxserver/mysql:latest`);
 	        return;
@@ -415,7 +415,25 @@
 	        }
 	    });
 	}
-
+function deleteFile(fileName) {
+    fetch(`/delete/${fileName}`, {
+        method: 'DELETE',
+        headers: {
+            'X-Session-Key': localStorage.getItem('sessionKey')
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('删除失败');
+        }
+        loadFileList();
+        alert(`文件 ${fileName} 删除成功`);
+    })
+    .catch(error => {
+        console.error('删除文件失败:', error);
+        alert(`删除失败: ${error.message}`);
+    });
+}
     
 function showModal(title, message) {
         const modal = new bootstrap.Modal(document.getElementById('commonModal'));
