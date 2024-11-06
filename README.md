@@ -21,6 +21,7 @@
 docker run -d \
   --name download \
   -p 8080:8080 \
+  -e APP_PASSWORD=admin \
   -v ./downloads:/root/downloads \
   -v /var/run/docker.sock:/var/run/docker.sock \
   --restart always \
