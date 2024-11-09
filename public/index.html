@@ -16,25 +16,83 @@
 
 	.login-container {
 		display: block;
-		max-width: 350px;
+		max-width: 400px;
 		margin: 100px auto;
-		padding: 20px;
-		border: 1px solid #ddd;
-		border-radius: 5px;
+		padding: 30px;
+		border-radius: 10px;
 		text-align: center;
 		background-color: white;
+		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 	}
 
-	input[type="password"] {
+	.login-container h2 {
+		color: #007bff;
+		margin-bottom: 25px;
+	}
+
+	.login-form {
+		margin-bottom: 20px;
+	}
+
+	.login-input {
 		width: 100%;
-		padding: 8px;
+		padding: 12px;
 		margin: 10px 0;
 		border: 1px solid #ddd;
-		border-radius: 4px;
+		border-radius: 5px;
+		font-size: 16px;
+		transition: border-color 0.3s ease;
 	}
 
-	button:hover {
+	.login-input:focus {
+		outline: none;
+		border-color: #007bff;
+		box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+	}
+
+	.login-button {
+		width: 100%;
+		padding: 12px;
+		background-color: #007bff;
+		color: white;
+		border: none;
+		border-radius: 5px;
+		font-size: 16px;
+		cursor: pointer;
+		transition: background-color 0.3s ease;
+	}
+
+	.login-button:hover {
 		background-color: #0056b3;
+	}
+
+	.login-button:disabled {
+		background-color: #ccc;
+		cursor: not-allowed;
+	}
+
+	.error-message {
+		color: #dc3545;
+		margin-top: 10px;
+		font-size: 14px;
+		min-height: 20px;
+	}
+
+	.login-loading {
+		display: inline-block;
+		width: 20px;
+		height: 20px;
+		border: 3px solid #ffffff;
+		border-radius: 50%;
+		border-top-color: transparent;
+		animation: spin 1s linear infinite;
+		margin-right: 8px;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
         .container {
@@ -126,8 +184,17 @@
 <body>
 <div id="loginContainer" class="login-container">
     <h2>登录</h2>
-    <input type="password" id="password" placeholder="请输入密码">
-    <button onclick="login()">登录</button>
+    <div class="login-form">
+        <input 
+            type="password" 
+            id="password" 
+            class="login-input" 
+            placeholder="请输入密码"
+            onkeypress="handleKeyPress(event)">
+        <button id="loginButton" class="login-button" onclick="login()">
+            <span id="loginButtonText">登录</span>
+        </button>
+    </div>
     <div id="loginError" class="error-message"></div>
 </div>
 <div id="mainContainer" class="main-container">
@@ -441,90 +508,114 @@ function showModal(title, message) {
 	   document.getElementById('commonModalMessage').textContent = message;
 	   modal.show();
     }
-</script>
-<script>
-   function checkSession() {
-       const sessionKey = localStorage.getItem('sessionKey');
-       if (!sessionKey) {
-           showLoginPage();
-           return;
-       }
 
-       fetch('/files', {
-           headers: {
-               'X-Session-Key': sessionKey
-           }
-       })
-       .then(response => {
-           if (response.ok) {
-               showMainPage();
-           } else {
-               showLoginPage();
-           }
-       })
-       .catch(() => showLoginPage());
-   }
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            login();
+        }
+    }
 
-   function showLoginPage() {
-       document.getElementById('loginContainer').style.display = 'block';
-       document.getElementById('mainContainer').style.display = 'none';
-       localStorage.removeItem('sessionKey');
-   }
+    function login() {
+        const password = document.getElementById('password').value;
+        const loginButton = document.getElementById('loginButton');
+        const loginButtonText = document.getElementById('loginButtonText');
+        const loginError = document.getElementById('loginError');
+        
+        if (!password) {
+            loginError.textContent = '请输入密码';
+            return;
+        }
 
-   function showMainPage() {
-       document.getElementById('loginContainer').style.display = 'none';
-       document.getElementById('mainContainer').style.display = 'block';
-   }
+        // 禁用登录按钮并显示加载状态
+        loginButton.disabled = true;
+        loginButtonText.innerHTML = '<span class="login-loading"></span>登录中...';
+        loginError.textContent = '';
+        
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password: password })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('密码错误');
+            }
+            return response.json();
+        })
+        .then(data => {
+            localStorage.setItem('sessionKey', data.sessionKey);
+            showMainPage();
+            loginError.textContent = '';
+            document.getElementById('password').value = ''; // 清空密码输入框
+        })
+        .catch(error => {
+            loginError.textContent = error.message;
+        })
+        .finally(() => {
+            // 恢复登录按钮状态
+            loginButton.disabled = false;
+            loginButtonText.textContent = '登录';
+        });
+    }
 
-   function login() {
-       const password = document.getElementById('password').value;
-       
-       fetch('/login', {
-           method: 'POST',
-           headers: {
-               'Content-Type': 'application/json'
-           },
-           body: JSON.stringify({ password: password })
-       })
-       .then(response => {
-           if (!response.ok) {
-               throw new Error('Invalid password');
-           }
-           return response.json();
-       })
-       .then(data => {
-           localStorage.setItem('sessionKey', data.sessionKey);
-           showMainPage();
-           document.getElementById('loginError').textContent = '';
-       })
-       .catch(() => {
-           document.getElementById('loginError').textContent = '密码错误';
-       });
-   }
+    function checkSession() {
+        const sessionKey = localStorage.getItem('sessionKey');
+        if (!sessionKey) {
+            showLoginPage();
+            return;
+        }
 
-   const originalFetch = window.fetch;
-   window.fetch = function() {
-       const args = Array.prototype.slice.call(arguments);
-       const sessionKey = localStorage.getItem('sessionKey');
-       
-       if (sessionKey && args[0] !== '/login') {
-           if (!args[1]) {
-               args[1] = {};
-           }
-           if (!args[1].headers) {
-               args[1].headers = {};
-           }
-           args[1].headers['X-Session-Key'] = sessionKey;
-       }
-       
-       return originalFetch.apply(window, args)
-           .then(response => {
-               if (response.status === 401) {
-                   showLoginPage();
-               }
-               return response;
-           });
-   };
+        fetch('/files', {
+            headers: {
+                'X-Session-Key': sessionKey
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                showMainPage();
+            } else {
+                showLoginPage();
+            }
+        })
+        .catch(() => showLoginPage());
+    }
+
+    function showLoginPage() {
+        document.getElementById('loginContainer').style.display = 'block';
+        document.getElementById('mainContainer').style.display = 'none';
+        localStorage.removeItem('sessionKey');
+    }
+
+    function showMainPage() {
+        document.getElementById('loginContainer').style.display = 'none';
+        document.getElementById('mainContainer').style.display = 'block';
+    }
+
+    const originalFetch = window.fetch;
+    window.fetch = function() {
+        const args = Array.prototype.slice.call(arguments);
+        const sessionKey = localStorage.getItem('sessionKey');
+        
+        if (sessionKey && args[0] !== '/login') {
+            if (!args[1]) {
+                args[1] = {};
+            }
+            if (!args[1].headers) {
+                args[1].headers = {};
+            }
+            args[1].headers['X-Session-Key'] = sessionKey;
+        }
+        
+        return originalFetch.apply(window, args)
+            .then(response => {
+                if (response.status === 401) {
+                    showLoginPage();
+                }
+                return response;
+            });
+    };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
