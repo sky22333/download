@@ -12,6 +12,15 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             padding: 50px;
             background-color: #f8f9fa;
+            visibility: hidden;
+        }
+
+        body.loaded {
+            visibility: visible;
+        }
+
+        #loginContainer, #mainContainer {
+            display: none;
         }
 
 	.login-container {
@@ -252,11 +261,16 @@
 </footer>
 
 <script>
-    window.addEventListener('load', function() {
-        checkSession();
-        loadFileList();
+    document.addEventListener('DOMContentLoaded', function() {
+        checkSession().then(() => {
+            document.body.classList.add('loaded');
+            if (document.getElementById('mainContainer').style.display === 'block') {
+                loadFileList();
+            }
+        });
     });
-	function pullImages() {
+
+    function pullImages() {
 	    const imageNames = document.getElementById('imageInput').value.trim();
 	    if (!imageNames) {
 	        showModal('错误', '请输入Docker镜像名称');
@@ -561,36 +575,43 @@ function showModal(title, message) {
     }
 
     function checkSession() {
-        const sessionKey = localStorage.getItem('sessionKey');
-        if (!sessionKey) {
-            showLoginPage();
-            return;
-        }
-
-        fetch('/files', {
-            headers: {
-                'X-Session-Key': sessionKey
-            }
-        })
-        .then(response => {
-            if (response.ok) {
-                showMainPage();
-            } else {
+        return new Promise((resolve) => {
+            const sessionKey = localStorage.getItem('sessionKey');
+            if (!sessionKey) {
                 showLoginPage();
+                resolve();
+                return;
             }
-        })
-        .catch(() => showLoginPage());
+
+            fetch('/files', {
+                headers: {
+                    'X-Session-Key': sessionKey
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    showMainPage();
+                } else {
+                    showLoginPage();
+                }
+            })
+            .catch(() => showLoginPage())
+            .finally(() => {
+                resolve();
+            });
+        });
     }
 
     function showLoginPage() {
-        document.getElementById('loginContainer').style.display = 'block';
         document.getElementById('mainContainer').style.display = 'none';
+        document.getElementById('loginContainer').style.display = 'block';
         localStorage.removeItem('sessionKey');
     }
 
     function showMainPage() {
         document.getElementById('loginContainer').style.display = 'none';
         document.getElementById('mainContainer').style.display = 'block';
+        loadFileList();
     }
 
     const originalFetch = window.fetch;
