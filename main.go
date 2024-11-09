@@ -131,7 +131,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
     expectedPassword := os.Getenv("APP_PASSWORD")
     if expectedPassword == "" {
-        log.Fatal("环境变量 APP_PASSWORD 未设置")
+        log.Fatal("环境变量未设置")
     }
 
     if req.Password != expectedPassword {
@@ -200,7 +200,20 @@ func pullPackAndCleanImages(images []string) {
     }
     wg.Wait()
 
-    tarFileName := fmt.Sprintf("docker_images_%s.tar", time.Now().Format("20060102150405"))
+    // 从镜像名称中提取信息并生成文件名
+    var imageInfos []string
+    for _, image := range images {
+        processedName := strings.ReplaceAll(image, "/", "_")
+        processedName = strings.ReplaceAll(processedName, ":", "_")
+        
+        if !strings.Contains(image, ":") {
+            processedName = processedName + "_latest"
+        }
+        
+        imageInfos = append(imageInfos, fmt.Sprintf("docker_%s", processedName))
+    }
+    
+    tarFileName := fmt.Sprintf("%s.tar", strings.Join(imageInfos, "_"))
     tarFilePath := filepath.Join(downloadDir, tarFileName)
     if err := packImages(cli, images, tarFilePath); err != nil {
         log.Printf("打包镜像失败: %v", err)
@@ -480,7 +493,7 @@ func main() {
         log.Fatalf("创建下载目录失败: %v", err)
     }
     if os.Getenv("APP_PASSWORD") == "" {
-        log.Fatal("环境变量 APP_PASSWORD 未设置")
+        log.Fatal("环境变量未设置")
     }
 
     http.Handle("/", http.FileServer(http.Dir("./public")))
