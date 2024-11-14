@@ -207,58 +207,66 @@
     <div id="loginError" class="error-message"></div>
 </div>
 <div id="mainContainer" class="main-container">
-<div class="container">
-    <h1 class="text-center"><i class="fas fa-download me-2"></i>文件下载</h1>
+    <div style="position: relative;">
+        <a href="/github.html" class="btn btn-primary position-absolute" 
+           style="top: 10px; right: 10px; z-index: 1000; border-radius: 20px; padding: 8px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <i class="fas fa-rocket me-1"></i>
+            <span class="d-none d-sm-inline">GitHub加速</span>
+        </a>
+    </div>
+    <div class="container">
+        <h1 class="text-center"><i class="fas fa-download me-2"></i>文件下载</h1>
 
-    <div class="row justify-content-center">
-        <div class="col-md-10">
-            <!-- 拉取镜像输入框 -->
-            <div class="mb-3">
-                <input type="text" class="form-control" id="imageInput" placeholder="正确格式示例：linuxserver/mysql:latest">
-            </div>
-            <button id="pullImageButton" class="btn btn-primary mb-3" onclick="pullImages()">
-                <i class="fas fa-download me-2"></i>下载镜像
-            </button>
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <!-- 拉取镜像输入框 -->
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="imageInput" placeholder="正确格式示例：linuxserver/mysql:latest">
+                </div>
+                <button id="pullImageButton" class="btn btn-primary mb-3" onclick="pullImages()">
+                    <i class="fas fa-download me-2"></i>下载镜像
+                </button>
 
-            <!-- 文件下载输入框 -->
-            <div class="mb-3">
-                <textarea class="form-control" id="downloadLinks" rows="3" placeholder="文件下载链接（多个链接请换行）"></textarea>
-            </div>
-            <button id="downloadButton" class="btn btn-primary mb-3" onclick="startDownload()">
-                <i class="fas fa-cloud-download-alt me-2"></i>下载文件
-            </button>
+                <!-- 文件下载输入框 -->
+                <div class="mb-3">
+                    <textarea class="form-control" id="downloadLinks" rows="3" placeholder="文件下载链接（多个链接请换行）"></textarea>
+                </div>
+                <button id="downloadButton" class="btn btn-primary mb-3" onclick="startDownload()">
+                    <i class="fas fa-cloud-download-alt me-2"></i>下载文件
+                </button>
 
-            <div id="progressContainers" class="progress-wrapper"></div>
+                <div id="progressContainers" class="progress-wrapper"></div>
 
-            <div class="file-list" id="fileList">
-                <!-- 文件列表在这里显示 -->
+                <div class="file-list" id="fileList">
+                    <!-- 文件列表在这里显示 -->
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- 通用模态弹窗 -->
-<div class="modal fade" id="commonModal" tabindex="-1" aria-labelledby="commonModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="commonModalLabel">提示</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="commonModalMessage"></div>
-            <div class="modal-footer" id="commonModalFooter">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+    <!-- 通用模态弹窗 -->
+    <div class="modal fade" id="commonModal" tabindex="-1" aria-labelledby="commonModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="commonModalLabel">提示</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="commonModalMessage"></div>
+                <div class="modal-footer" id="commonModalFooter">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- 页脚 -->
-<footer class="text-center py-3">
-    <a href="https://github.com/sky22333/download" target="_blank">
-        <i class="fab fa-github" style="color: black;"></i>
-    </a>
-</footer>
+    <!-- 页脚 -->
+    <footer class="text-center py-3">
+        <a href="https://github.com/sky22333/download" target="_blank">
+            <i class="fab fa-github" style="color: black;"></i>
+        </a>
+    </footer>
+</div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {

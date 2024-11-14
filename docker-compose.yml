@@ -1,12 +1,12 @@
 services:
-  download:
+  app:
     build: .
-    container_name: download
     ports:
       - "8080:8080"
+    volumes:
+      - ./downloads:/app/downloads
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - APP_PASSWORD=admin             # 登录密码
-    volumes:
-      - ./downloads:/root/downloads    # 映射文件目录
-      - /var/run/docker.sock:/var/run/docker.sock
+      - GITHUB_URL=example.com        # 替换你的域名
     restart: always

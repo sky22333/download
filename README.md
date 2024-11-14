@@ -13,6 +13,7 @@
 * **轻量级：** 打包好的`docker`镜像和二进制文件仅`19MB`左右
 * **镜像下载：** 支持下载`docker镜像`和`ghcr镜像`并自动打包为压缩包
 * **访问控制：** 通过环境变量设置访问密码
+* **Github代理：** 增加`github`代理加速，可处理脚本嵌套逻辑
 
 ---
 
@@ -23,12 +24,13 @@ docker run -d \
   --name download \
   -p 8080:8080 \
   -e APP_PASSWORD=admin \
+  -e GITHUB_URL=example.com \
   -v ./downloads:/root/downloads \
   -v /var/run/docker.sock:/var/run/docker.sock \
   --restart always \
   ghcr.io/sky22333/download:latest
 ```
-> 默认运行在8080端口，可自行域名反代并开启HTTPS，密码默认`admin`，可在环境变量指定
+> 默认运行在8080端口，可自行域名反代并开启HTTPS，密码默认`admin`，可在环境变量指定，需在变量里指定你的域名。
 
 ---
 
